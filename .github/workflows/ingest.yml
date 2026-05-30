@@ -1,0 +1,42 @@
+name: Daily event ingestion
+
+on:
+  schedule:
+    - cron: '0 13 * * *'    # 6am Mountain Time (UTC-7)
+  workflow_dispatch:           # lets you run it manually from GitHub UI
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ingestion pipeline
+        env:
+          TM_API_KEY:        ${{ secrets.TM_API_KEY }}
+          EVENTBRITE_TOKEN:  ${{ secrets.EVENTBRITE_TOKEN }}
+        run: python -m ingestion.run_ingestion
+
+      - name: Commit updated data files
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/events.json data/events.db
+          git diff --staged --quiet || \
+            git commit -m "chore: event update $(date -u '+%Y-%m-%d')"
+          git push
