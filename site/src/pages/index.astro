@@ -1,0 +1,81 @@
+---
+import { readFileSync } from 'fs';
+import { resolve } from 'path';
+
+let events = [];
+try {
+  events = JSON.parse(readFileSync(resolve('../data/events.json'), 'utf-8'));
+} catch (e) { events = []; }
+
+const today = new Date().toISOString().split('T')[0];
+const twoWeeks = new Date(Date.now() + 14*86400000).toISOString().split('T')[0];
+const upcoming = events.filter(e => e.date >= today && e.date <= twoWeeks);
+const byDate = upcoming.reduce((acc, e) => {
+  (acc[e.date] = acc[e.date] || []).push(e);
+  return acc;
+}, {});
+---
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width"/>
+  <title>Denver Beats — Live Music Guide</title>
+  <style>
+    body{font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;padding:1rem 1.5rem;color:#1a1a1a}
+    h1{font-size:2rem;font-weight:700;margin-bottom:.25rem}
+    .tagline{color:#666;margin-bottom:2rem}
+    .date-group{margin-bottom:2rem}
+    .date-label{font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#888;border-bottom:1px solid #eee;padding-bottom:.5rem;margin-bottom:.75rem}
+    .event{display:flex;justify-content:space-between;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid #f0f0f0;gap:1rem}
+    .event-title{font-weight:600;font-size:.95rem}
+    .event-meta{font-size:.82rem;color:#666;margin-top:.2rem}
+    .event-price{font-size:.82rem;color:#2a7a2a;white-space:nowrap}
+    .sold-out{color:#c0392b}
+    .ticket-btn{font-size:.78rem;background:#1a1a1a;color:#fff;padding:.35rem .75rem;border-radius:4px;text-decoration:none;white-space:nowrap}
+    .ticket-btn:hover{background:#333}
+    .subscribe-bar{background:#f7f7f5;border-radius:8px;padding:1.25rem;margin-bottom:2rem;text-align:center}
+    .subscribe-bar h2{margin:0 0 .5rem;font-size:1.1rem}
+    .subscribe-bar p{margin:0 0 .75rem;color:#555;font-size:.88rem}
+    .subscribe-btn{background:#1a1a1a;color:#fff;padding:.6rem 1.4rem;border-radius:4px;text-decoration:none;font-weight:600}
+  </style>
+</head>
+<body>
+  <h1>Denver Beats</h1>
+  <p class="tagline">Live music in Denver, Boulder, Red Rocks & beyond — updated daily.</p>
+  <div class="subscribe-bar">
+    <h2>Get the weekly digest</h2>
+    <p>Free weekly picks + paid daily alerts and full listings.</p>
+    <a class="subscribe-btn" href="#">Subscribe free →</a>
+  </div>
+  {Object.entries(byDate).map(([date, dayEvents]) => (
+    <div class="date-group">
+      <div class="date-label">
+        {new Date(date + 'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}
+      </div>
+      {dayEvents.map(event => (
+        <div class="event">
+          <div>
+            <div class="event-title">{event.title}</div>
+            <div class="event-meta">
+              {event.venue_name}, {event.venue_city}
+              {event.time ? ` · ${event.time}` : ''}
+              {event.genre ? ` · ${event.genre}` : ''}
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem">
+            {event.ticket_status === 'sold_out'
+              ? <span class="sold-out event-price">Sold out</span>
+              : event.price_min
+                ? <span class="event-price">${Math.round(event.price_min)}+</span>
+                : null}
+            <a class="ticket-btn" href={event.ticket_url} target="_blank" rel="noopener">Tickets →</a>
+          </div>
+        </div>
+      ))}
+    </div>
+  ))}
+  <footer style="margin-top:3rem;padding-top:1rem;border-top:1px solid #eee;font-size:.8rem;color:#999">
+    <p>Updated daily. Event data via Ticketmaster. <a href="/rss.xml">RSS feed</a>.</p>
+  </footer>
+</body>
+</html>
