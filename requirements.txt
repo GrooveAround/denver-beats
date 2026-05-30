@@ -4,4 +4,4 @@ rapidfuzz==3.6.1
 anthropic==0.25.0
 pytz==2024.1
 beautifulsoup4==4.12.3
-lxml==5.1.0
+html5lib==1.1
