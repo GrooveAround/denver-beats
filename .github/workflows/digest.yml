@@ -2,7 +2,7 @@ name: Digest generation
 
 on:
   schedule:
-    - cron: '0 19 * * 5'    # Friday noon MT — weekly digest
+    - cron: '0 14 * * 1'    # Monday 7am MT — weekly digest
     - cron: '0 14 1 * *'    # 1st of month, 7am MT — monthly digest
   workflow_dispatch:
 
@@ -23,7 +23,7 @@ jobs:
       - run: pip install -r requirements-local.txt
 
       - name: Generate weekly digest
-        if: github.event.schedule == '0 19 * * 5' || github.event_name == 'workflow_dispatch'
+        if: github.event.schedule == '0 14 * * 1' || github.event_name == 'workflow_dispatch'
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: python digest/generate_weekly.py
