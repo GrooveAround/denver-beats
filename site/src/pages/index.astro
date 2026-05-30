@@ -8,8 +8,28 @@ try {
 } catch (e) { events = []; }
 
 const today = new Date().toISOString().split('T')[0];
-const twoWeeks = new Date(Date.now() + 14*86400000).toISOString().split('T')[0];
-const upcoming = events.filter(e => e.date >= today && e.date <= twoWeeks);
+const sixWeeks = new Date(Date.now() + 42*86400000).toISOString().split('T')[0];
+const upcoming = events.filter(e => e.date >= today && e.date <= sixWeeks);
+
+const genres = [...new Set(upcoming
+  .map(e => e.genre?.split('/')[0]?.trim())
+  .filter(Boolean)
+)].sort();
+
+const venues = [...new Set(upcoming
+  .map(e => e.venue_name)
+  .filter(Boolean)
+)].sort();
+
+function genreEmoji(g) {
+  const map = {
+    'Rock': '🎸', 'Country': '🤠', 'Hip-Hop': '🎤', 'R&B': '🎵',
+    'Pop': '⭐', 'Electronic': '🎧', 'Folk': '🪕', 'Jazz': '🎺',
+    'Classical': '🎻', 'Metal': '🤘', 'Blues': '🎸', 'Indie': '🎵'
+  };
+  return map[g] || '🎵';
+}
+
 const byDate = upcoming.reduce((acc, e) => {
   (acc[e.date] = acc[e.date] || []).push(e);
   return acc;
@@ -18,64 +38,213 @@ const byDate = upcoming.reduce((acc, e) => {
 <html lang="en">
 <head>
   <meta charset="utf-8"/>
-  <meta name="viewport" content="width=device-width"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <title>Denver Beats — Live Music Guide</title>
+  <meta name="description" content="The best live music in Denver, Boulder, Red Rocks and beyond. Updated daily."/>
   <style>
-    body{font-family:system-ui,sans-serif;max-width:720px;margin:0 auto;padding:1rem 1.5rem;color:#1a1a1a}
-    h1{font-size:2rem;font-weight:700;margin-bottom:.25rem}
-    .tagline{color:#666;margin-bottom:2rem}
-    .date-group{margin-bottom:2rem}
-    .date-label{font-size:.85rem;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:#888;border-bottom:1px solid #eee;padding-bottom:.5rem;margin-bottom:.75rem}
-    .event{display:flex;justify-content:space-between;align-items:flex-start;padding:.6rem 0;border-bottom:1px solid #f0f0f0;gap:1rem}
-    .event-title{font-weight:600;font-size:.95rem}
-    .event-meta{font-size:.82rem;color:#666;margin-top:.2rem}
-    .event-price{font-size:.82rem;color:#2a7a2a;white-space:nowrap}
-    .sold-out{color:#c0392b}
-    .ticket-btn{font-size:.78rem;background:#1a1a1a;color:#fff;padding:.35rem .75rem;border-radius:4px;text-decoration:none;white-space:nowrap}
-    .ticket-btn:hover{background:#333}
-    .subscribe-bar{background:#f7f7f5;border-radius:8px;padding:1.25rem;margin-bottom:2rem;text-align:center}
-    .subscribe-bar h2{margin:0 0 .5rem;font-size:1.1rem}
-    .subscribe-bar p{margin:0 0 .75rem;color:#555;font-size:.88rem}
-    .subscribe-btn{background:#1a1a1a;color:#fff;padding:.6rem 1.4rem;border-radius:4px;text-decoration:none;font-weight:600}
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a;
+      --bg2: #141414;
+      --bg3: #1e1e1e;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --text2: #999;
+      --accent: #e8ff47;
+      --radius: 10px;
+    }
+    body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; }
+    a { color: inherit; text-decoration: none; }
+
+    .header { border-bottom: 1px solid var(--border); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; background: rgba(10,10,10,0.95); backdrop-filter: blur(10px); z-index: 100; }
+    .logo { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.03em; }
+    .logo span { color: var(--accent); }
+    .subscribe-btn { background: var(--accent); color: #000; padding: 0.5rem 1.1rem; border-radius: 20px; font-weight: 700; font-size: 0.82rem; transition: opacity 0.15s; }
+    .subscribe-btn:hover { opacity: 0.85; }
+
+    .hero { padding: 3rem 1.5rem 2rem; max-width: 1100px; margin: 0 auto; }
+    .hero h1 { font-size: clamp(2rem, 5vw, 3.5rem); font-weight: 800; letter-spacing: -0.04em; line-height: 1.1; margin-bottom: 0.75rem; }
+    .hero h1 em { color: var(--accent); font-style: normal; }
+    .hero p { color: var(--text2); font-size: 1rem; max-width: 500px; line-height: 1.6; }
+    .event-count { display: inline-block; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; padding: 0.3rem 0.8rem; font-size: 0.78rem; color: var(--text2); margin-top: 1rem; }
+
+    .filters { padding: 0 1.5rem 1.5rem; max-width: 1100px; margin: 0 auto; display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+    .filter-label { font-size: 0.75rem; color: var(--text2); text-transform: uppercase; letter-spacing: 0.08em; }
+    .filter-btn { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 0.4rem 0.9rem; border-radius: 20px; font-size: 0.78rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .filter-btn:hover { border-color: var(--accent); color: var(--text); }
+    .filter-btn.active { background: var(--accent); border-color: var(--accent); color: #000; font-weight: 700; }
+    .filter-divider { width: 1px; height: 20px; background: var(--border); }
+    .filter-select { background: var(--bg3); border: 1px solid var(--border); color: var(--text); padding: 0.4rem 0.9rem; border-radius: 20px; font-size: 0.78rem; cursor: pointer; outline: none; }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 0 1.5rem 4rem; }
+    .date-group { margin-bottom: 2.5rem; }
+    .date-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border); }
+    .date-day { font-size: 1.1rem; font-weight: 700; }
+    .date-full { color: var(--text2); font-size: 0.85rem; }
+    .today-badge { background: var(--accent); color: #000; font-size: 0.65rem; font-weight: 800; padding: 0.2rem 0.5rem; border-radius: 4px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .events-grid { display: grid; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .event-row { display: grid; grid-template-columns: 64px 1fr auto; background: var(--bg2); transition: background 0.15s; align-items: center; }
+    .event-row:hover { background: var(--bg3); }
+    .event-row[data-hidden="true"] { display: none; }
+
+    .event-img { width: 64px; height: 64px; object-fit: cover; display: block; flex-shrink: 0; }
+    .event-img-placeholder { width: 64px; height: 64px; background: var(--bg3); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+
+    .event-body { padding: 0.875rem 1rem; min-width: 0; }
+    .event-title { font-weight: 600; font-size: 0.9rem; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .event-meta { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.3rem; align-items: center; }
+    .meta-venue { font-size: 0.75rem; color: var(--text2); }
+    .meta-time { font-size: 0.75rem; color: var(--text2); }
+    .genre-badge { font-size: 0.65rem; background: var(--bg); border: 1px solid var(--border); color: var(--text2); padding: 0.15rem 0.45rem; border-radius: 10px; white-space: nowrap; }
+
+    .event-right { padding: 0.875rem 1rem; display: flex; flex-direction: column; align-items: flex-end; gap: 0.4rem; flex-shrink: 0; }
+    .event-price { font-size: 0.78rem; color: #4ade80; font-weight: 600; white-space: nowrap; }
+    .sold-out { color: #f87171; font-size: 0.75rem; }
+    .ticket-link { background: var(--accent); color: #000; font-size: 0.72rem; font-weight: 700; padding: 0.35rem 0.75rem; border-radius: 6px; white-space: nowrap; transition: opacity 0.15s; }
+    .ticket-link:hover { opacity: 0.85; }
+
+    .no-results { text-align: center; padding: 3rem; color: var(--text2); font-size: 0.9rem; display: none; }
+    .no-results.visible { display: block; }
+
+    .footer { border-top: 1px solid var(--border); padding: 2rem 1.5rem; text-align: center; color: var(--text2); font-size: 0.78rem; }
+
+    @media (max-width: 600px) {
+      .hero h1 { font-size: 2rem; }
+      .event-row { grid-template-columns: 48px 1fr auto; }
+      .event-img, .event-img-placeholder { width: 48px; height: 48px; }
+      .filters { gap: 0.5rem; }
+    }
   </style>
 </head>
 <body>
-  <h1>Denver Beats</h1>
-  <p class="tagline">Live music in Denver, Boulder, Red Rocks & beyond — updated daily.</p>
-  <div class="subscribe-bar">
-    <h2>Get the weekly digest</h2>
-    <p>Free weekly picks + paid daily alerts and full listings.</p>
-    <a class="subscribe-btn" href="#">Subscribe free →</a>
-  </div>
-  {Object.entries(byDate).map(([date, dayEvents]) => (
-    <div class="date-group">
-      <div class="date-label">
-        {new Date(date + 'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}
-      </div>
-      {dayEvents.map(event => (
-        <div class="event">
-          <div>
-            <div class="event-title">{event.title}</div>
-            <div class="event-meta">
-              {event.venue_name}, {event.venue_city}
-              {event.time ? ` · ${event.time}` : ''}
-              {event.genre ? ` · ${event.genre}` : ''}
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem">
-            {event.ticket_status === 'sold_out'
-              ? <span class="sold-out event-price">Sold out</span>
-              : event.price_min
-                ? <span class="event-price">${Math.round(event.price_min)}+</span>
-                : null}
-            <a class="ticket-btn" href={event.ticket_url} target="_blank" rel="noopener">Tickets →</a>
-          </div>
-        </div>
-      ))}
-    </div>
+
+<header class="header">
+  <div class="logo">Denver<span>Beats</span></div>
+  <a class="subscribe-btn" href="#">Subscribe free</a>
+</header>
+
+<section class="hero">
+  <h1>Live music in<br/><em>Denver & beyond</em></h1>
+  <p>Every show worth seeing — Red Rocks, Mission Ballroom, Ogden, Boulder and more. Updated every morning.</p>
+  <span class="event-count" id="event-count">{upcoming.length} upcoming shows</span>
+</section>
+
+<div class="filters">
+  <span class="filter-label">Genre</span>
+  <button class="filter-btn active" data-filter="genre" data-value="all">All</button>
+  {genres.slice(0, 8).map(g => (
+    <button class="filter-btn" data-filter="genre" data-value={g}>{g}</button>
   ))}
-  <footer style="margin-top:3rem;padding-top:1rem;border-top:1px solid #eee;font-size:.8rem;color:#999">
-    <p>Updated daily. Event data via Ticketmaster. <a href="/rss.xml">RSS feed</a>.</p>
-  </footer>
+  <div class="filter-divider"></div>
+  <span class="filter-label">Venue</span>
+  <select class="filter-select" id="venue-select">
+    <option value="all">All venues</option>
+    {venues.map(v => (
+      <option value={v}>{v}</option>
+    ))}
+  </select>
+</div>
+
+<main class="main">
+  <div class="no-results" id="no-results">No shows match your filters. Try a different combination.</div>
+
+  {Object.entries(byDate).map(([date, dayEvents]) => {
+    const d = new Date(date + 'T12:00:00');
+    const isToday = date === today;
+    const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+    const fullDate = d.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+    return (
+      <div class="date-group" data-date={date}>
+        <div class="date-header">
+          <span class="date-day">{dayName}</span>
+          <span class="date-full">{fullDate}</span>
+          {isToday && <span class="today-badge">Tonight</span>}
+        </div>
+        <div class="events-grid">
+          {dayEvents.map(event => {
+            const genreMain = event.genre?.split('/')[0]?.trim() || '';
+            const emoji = genreEmoji(genreMain);
+            return (
+              <div class="event-row"
+                data-genre={genreMain}
+                data-venue={event.venue_name}>
+                {event.image_url
+                  ? <img class="event-img" src={event.image_url} alt="" loading="lazy"/>
+                  : <div class="event-img-placeholder">{emoji}</div>
+                }
+                <div class="event-body">
+                  <div class="event-title">{event.title}</div>
+                  <div class="event-meta">
+                    <span class="meta-venue">{event.venue_name}</span>
+                    {event.time && <span class="meta-time">· {event.time}</span>}
+                    {genreMain && <span class="genre-badge">{genreMain}</span>}
+                  </div>
+                </div>
+                <div class="event-right">
+                  {event.ticket_status === 'sold_out'
+                    ? <span class="sold-out">Sold out</span>
+                    : event.price_min
+                      ? <span class="event-price">${Math.round(event.price_min)}+</span>
+                      : null
+                  }
+                  <a class="ticket-link" href={event.ticket_url} target="_blank" rel="noopener">Tickets →</a>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  })}
+</main>
+
+<footer class="footer">
+  <p>Denver Beats — updated daily · <a href="/rss.xml" style="color:var(--accent)">RSS feed</a> · Event data via Ticketmaster</p>
+</footer>
+
+<script is:inline>
+let activeGenre = 'all';
+let activeVenue = 'all';
+
+function applyFilters() {
+  const rows = document.querySelectorAll('.event-row');
+  const groups = document.querySelectorAll('.date-group');
+  let visible = 0;
+
+  rows.forEach(row => {
+    const genreMatch = activeGenre === 'all' || row.dataset.genre === activeGenre;
+    const venueMatch = activeVenue === 'all' || row.dataset.venue === activeVenue;
+    const show = genreMatch && venueMatch;
+    row.dataset.hidden = show ? 'false' : 'true';
+    if (show) visible++;
+  });
+
+  groups.forEach(group => {
+    const anyVisible = [...group.querySelectorAll('.event-row')]
+      .some(r => r.dataset.hidden === 'false');
+    group.style.display = anyVisible ? '' : 'none';
+  });
+
+  document.getElementById('event-count').textContent = visible + ' upcoming shows';
+  document.getElementById('no-results').classList.toggle('visible', visible === 0);
+}
+
+document.querySelectorAll('[data-filter="genre"]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('[data-filter="genre"]').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    activeGenre = btn.dataset.value;
+    applyFilters();
+  });
+});
+
+document.getElementById('venue-select').addEventListener('change', e => {
+  activeVenue = e.target.value;
+  applyFilters();
+});
+</script>
+
 </body>
 </html>
+ENDOFFILE
