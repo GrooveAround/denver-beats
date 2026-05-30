@@ -18,7 +18,7 @@ export async function GET(context) {
     .slice(0, 50);
 
   return rss({
-    title: 'Denver Beats — Live Music Guide',
+    title: 'Denver Groove Around — Live Music Guide',
     description: 'Daily live music listings for Denver, Boulder, Red Rocks, and beyond.',
     site: context.site || 'https://YOUR_DOMAIN.com',
     items: upcoming.map(event => ({
