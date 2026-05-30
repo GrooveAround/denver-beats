@@ -11,7 +11,6 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -26,12 +25,3 @@ jobs:
 
       - name: Build site
         run: cd site && npm run build
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
-        with:
-          apiToken:    ${{ secrets.CF_API_TOKEN }}
-          accountId:   ${{ secrets.CF_ACCOUNT_ID }}
-          projectName: denver-beats
-          directory:   site/dist
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
